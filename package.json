@@ -9,11 +9,12 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/mcp.js",
+    "dashboard": "node dist/dashboard.js",
     "typecheck": "tsc --noEmit",
     "test": "npm run build && tsx --test tests/*.test.ts",
-    "format": "prettier --write src tests scripts *.json *.jsonc *.md tasks/*.md",
-    "format:check": "prettier --check src tests scripts *.json *.jsonc *.md tasks/*.md",
-    "lint": "eslint src tests scripts"
+    "format": "prettier --write src tests scripts public *.json *.jsonc *.md tasks/*.md",
+    "format:check": "prettier --check src tests scripts public *.json *.jsonc *.md tasks/*.md",
+    "lint": "eslint src tests scripts public/app.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.25.0",

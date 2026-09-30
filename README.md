@@ -26,6 +26,18 @@ Use `mcp.example.json` as **a fragment reference**, not as a replacement for exi
 
 This package itself also contains `opencode.jsonc` with the built local server and both selected models; `opencode mcp list` from this folder should show `agent-orchestrator connected`. For a different target checkout, copy only the fragment into that checkout and update the JS command path. The current package repository needs a committed baseline before it can be used as a dispatch target.
 
+## Local dashboard
+
+After building, start the **read-only** dashboard in a separate terminal:
+
+```sh
+npm run build
+npm run dashboard
+# Open http://127.0.0.1:4317
+```
+
+The dashboard shows up to 50 recent runs: task ID, CLI (`opencode`/`agy`), model, state, elapsed time, test results, changed files, and worktree/branch/log/diff-stat paths. It refreshes every four seconds; click a task row to expand details. To monitor a different Git checkout, run `ORCHESTRATOR_REPO_ROOT=/absolute/path/to/repo npm run dashboard`. Set `ORCHESTRATOR_DASHBOARD_PORT` to change the port. It listens only on `127.0.0.1` and has no dispatch/cancel/cleanup actions. Run data resides under the **target repository's** Git metadata, so select the same repository that the MCP server is configured to use. It does not change running-task state when reading reports.
+
 The reproducible CLI smoke client is `scripts/smoke.mjs` (only accepts a Git fixture directory named `agent-orchestrator-smoke-*`). Results of a real two-worker planning → coding → testing trial, including discovered permission/cwd fixes, are in `tasks/smoke-report.md`.
 
 The `ask` rules require approval before dispatch/cancel/cleanup. Choose **Allow once** for destructive actions, and keep the approval rules after broader rules because the last matching rule wins. The cleanup tool additionally requires `confirm: true`; ask the user explicitly before supplying it. Tool names appear as `agent-orchestrator_dispatch_tasks` etc. in OpenCode. The MCP server logs nothing on stdout except protocol messages.

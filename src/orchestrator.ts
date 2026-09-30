@@ -8,6 +8,7 @@ import {
   rename,
   lstat,
   rm,
+  stat,
   writeFile,
 } from "node:fs/promises";
 import { dirname, isAbsolute, join, resolve, sep } from "node:path";
@@ -143,6 +144,25 @@ async function validatePaths(root: string, paths: string[]): Promise<void> {
 }
 
 type Entry = { task: TaskInput; report: Report };
+export type DashboardTask = Pick<
+  Report,
+  | "task_id"
+  | "worker"
+  | "model"
+  | "status"
+  | "summary"
+  | "worktree_path"
+  | "branch"
+  | "changed_files"
+  | "tests"
+  | "exit_code"
+  | "started_at"
+  | "finished_at"
+  | "log_path"
+  | "diff_path"
+  | "errors"
+>;
+export type RunSnapshot = { run_id: string; tasks: DashboardTask[] };
 export class Orchestrator {
   private readonly active = new Map<string, ChildProcess>();
   private readonly live = new Set<string>();
@@ -218,6 +238,110 @@ export class Orchestrator {
         return report;
       }),
     );
+  }
+
+  /** Read-only view for the dashboard. Never reconciles a different process's live run. */
+  async listRunSnapshots(): Promise<RunSnapshot[]> {
+    await this.ready();
+    const runsPath = join(this.base, "agent-orchestrator", "runs");
+    let directories;
+    try {
+      directories = (await readdir(runsPath, { withFileTypes: true })).filter(
+        (entry) =>
+          entry.isDirectory() &&
+          runSchema.safeParse({ run_id: entry.name }).success,
+      );
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+      throw error;
+    }
+    const dates = await Promise.all(
+      directories.map(async (entry) => {
+        try {
+          return {
+            id: entry.name,
+            updated: (await stat(join(runsPath, entry.name))).mtimeMs,
+          };
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+          throw error;
+        }
+      }),
+    );
+    const dated = dates.filter(
+      (item): item is NonNullable<typeof item> => item !== null,
+    );
+    dated.sort((a, b) => b.updated - a.updated);
+    const snapshots = await Promise.all(
+      dated.slice(0, 50).map(async ({ id }) => {
+        let entries;
+        try {
+          entries = await readdir(this.directory(id), { withFileTypes: true });
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+          throw error;
+        }
+        const taskDirs = entries.filter(
+          (entry) =>
+            entry.isDirectory() &&
+            /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/.test(entry.name),
+        );
+        const tasks = await Promise.all(
+          taskDirs.map(async (entry): Promise<DashboardTask | null> => {
+            try {
+              const report = JSON.parse(
+                await readFile(this.reportPath(id, entry.name), "utf8"),
+              ) as Report;
+              const {
+                task_id,
+                worker,
+                model,
+                status,
+                summary,
+                worktree_path,
+                branch,
+                changed_files,
+                tests,
+                exit_code,
+                started_at,
+                finished_at,
+                log_path,
+                diff_path,
+                errors,
+              } = report;
+              return {
+                task_id,
+                worker,
+                model,
+                status,
+                summary,
+                worktree_path,
+                branch,
+                changed_files,
+                tests: tests.map(({ command, exit_code, status }) => ({
+                  command,
+                  exit_code,
+                  status,
+                })),
+                exit_code,
+                started_at,
+                finished_at,
+                log_path,
+                diff_path,
+                errors,
+              };
+            } catch {
+              return null;
+            } // Ignore a report being atomically replaced.
+          }),
+        );
+        return {
+          run_id: id,
+          tasks: tasks.filter((item): item is DashboardTask => item !== null),
+        };
+      }),
+    );
+    return snapshots.filter((item): item is RunSnapshot => item !== null);
   }
 
   async dispatch(input: unknown): Promise<{ run_id: string; tasks: Report[] }> {
