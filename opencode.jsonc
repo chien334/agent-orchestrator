@@ -1,0 +1,33 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "servers": {
+      "agent-orchestrator": {
+        "type": "local",
+        "command": ["node", "dist/mcp.js"],
+        "cwd": ".",
+        "environment": {
+          "ORCHESTRATOR_OPENCODE_MODEL": "opencode/muse-spark-1.3-contributor-free",
+          "ORCHESTRATOR_AGY_MODEL": "gemini-3.8-flash-high",
+        },
+      },
+    },
+  },
+  "permissions": [
+    {
+      "action": "agent-orchestrator_dispatch_tasks",
+      "resource": "*",
+      "effect": "ask",
+    },
+    {
+      "action": "agent-orchestrator_cancel_run",
+      "resource": "*",
+      "effect": "ask",
+    },
+    {
+      "action": "agent-orchestrator_cleanup_run",
+      "resource": "*",
+      "effect": "ask",
+    },
+  ],
+}

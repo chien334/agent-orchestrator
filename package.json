@@ -1,0 +1,31 @@
+{
+  "name": "agent-orchestrator",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/mcp.js",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run build && tsx --test tests/*.test.ts",
+    "format": "prettier --write src tests scripts *.json *.jsonc *.md tasks/*.md",
+    "format:check": "prettier --check src tests scripts *.json *.jsonc *.md tasks/*.md",
+    "lint": "eslint src tests scripts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.25.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "@types/node": "^22.0.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0",
+    "typescript-eslint": "^8.0.0"
+  }
+}

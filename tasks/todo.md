@@ -1,0 +1,3 @@
+- [x] Contract and path validation with focused tests.
+- [x] Worktree dispatch, queue, CLI handling, persisted results and cancellation with fixture tests.
+- [x] MCP stdio entrypoint, cleanup and documentation; run full checks.
