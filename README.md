@@ -2,6 +2,24 @@
 
 Standalone TypeScript/Node MCP stdio server for OpenCode Desktop. Each task runs in its own Git worktree, on its own branch from the run's starting commit. Supported workers: `opencode run` and `agy -p`. A run may include both worker types. No Desktop GUI automation or automatic merge, commit, cherry-pick, push, or branch deletion.
 
+**Visual overview:** [Open the orchestration flow diagram](docs/orchestration-flow.html). **OpenCode skill:** [`.opencode/skills/parallel-cli-orchestration/SKILL.md`](.opencode/skills/parallel-cli-orchestration/SKILL.md) teaches OpenCode how to plan, dispatch, monitor, review and report with this MCP server. OpenCode discovers the skill automatically in this repository. For another target repository, append `"skills": ["../agent-orchestrator/.opencode/skills"]` to its existing `opencode.jsonc` (adjust the path if the folders are not siblings); the `mcp.example.json` fragment includes this entry. Keep any existing `skills` values.
+
+```mermaid
+flowchart TD
+    User([Yêu cầu]) --> Desktop[OpenCode Desktop: chia tác vụ]
+    Desktop --> MCP[MCP dispatch_tasks: tạo worktree riêng]
+    MCP --> OC[OpenCode CLI / worktree A]
+    MCP --> AG[Antigravity CLI / worktree B]
+    OC --> Results[Trạng thái, log, test và diff]
+    AG --> Results
+    Results --> Review{Duyệt diff và test đạt?}
+    Review -->|Có| Report[Báo cáo kết quả]
+    Review -->|Chưa| Followup[Sửa lại hoặc báo blocked]
+    Results -.-> Dashboard[Dashboard local chỉ đọc]
+```
+
+Xem [sơ đồ HTML đầy đủ](docs/orchestration-flow.html) bằng cách mở file trong trình duyệt. Worktree/branch được giữ lại; chỉ cleanup khi người dùng yêu cầu rõ.
+
 ## Prerequisites and installation
 
 Node.js 20+, npm and Git on macOS/Linux. The target repository must have at least one commit (`HEAD`); its current uncommitted edits are not included in worker worktrees. From this folder:

@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:," />
+    <title>Luồng điều phối CLI agents</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --paper: #f8fafc;
+        --ink: #1e293b;
+        --muted: #64748b;
+        --line: #cbd5e1;
+        --accent: #0891b2;
+        --accent-tint: #e7f7fb;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font-family:
+          "Geist",
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+      .page {
+        max-width: 1040px;
+        margin: auto;
+        padding: 42px 32px 64px;
+      }
+      .eyebrow {
+        margin: 0 0 8px;
+        color: var(--accent);
+        font:
+          600 11px/1.3 "Geist Mono",
+          ui-monospace,
+          monospace;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+      h1 {
+        margin: 0;
+        font:
+          400 clamp(32px, 5vw, 48px)/1.1 "Instrument Serif",
+          Georgia,
+          serif;
+        letter-spacing: -0.02em;
+      }
+      .intro {
+        max-width: 680px;
+        margin: 14px 0 28px;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+      .figure {
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+      }
+      svg {
+        display: block;
+        width: 100%;
+        min-width: 760px;
+        height: auto;
+      }
+      .arrow {
+        fill: none;
+        stroke: #64748b;
+        stroke-width: 1.6;
+        marker-end: url(#arrow);
+      }
+      .arrow-primary {
+        stroke: #0891b2;
+        marker-end: url(#arrow-accent);
+      }
+      .node {
+        fill: #fff;
+        stroke: #94a3b8;
+        stroke-width: 1.2;
+      }
+      .node-strong {
+        stroke: #1e293b;
+      }
+      .node-accent {
+        fill: #e7f7fb;
+        stroke: #0891b2;
+        stroke-width: 1.5;
+      }
+      .node-soft {
+        fill: #f1f5f9;
+      }
+      .tag {
+        fill: #64748b;
+        font:
+          600 8px "Geist Mono",
+          ui-monospace,
+          monospace;
+        letter-spacing: 0.14em;
+        text-anchor: middle;
+      }
+      .label {
+        fill: #1e293b;
+        font:
+          600 16px "Geist",
+          system-ui,
+          sans-serif;
+        text-anchor: middle;
+      }
+      .sub {
+        fill: #64748b;
+        font:
+          400 12px "Geist Mono",
+          ui-monospace,
+          monospace;
+        text-anchor: middle;
+      }
+      .edge-label {
+        fill: #64748b;
+        font:
+          600 8px "Geist Mono",
+          ui-monospace,
+          monospace;
+        letter-spacing: 0.1em;
+        text-anchor: middle;
+      }
+      .note {
+        margin: 18px 0 0;
+        padding-left: 16px;
+        border-left: 2px solid var(--accent);
+        color: var(--muted);
+        line-height: 1.6;
+      }
+      .note strong {
+        color: var(--ink);
+      }
+      .steps {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px 40px;
+        margin-top: 32px;
+      }
+      .steps h2 {
+        margin: 0 0 8px;
+        font-size: 15px;
+      }
+      .steps p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+      code {
+        font-family: "Geist Mono", ui-monospace, monospace;
+        font-size: 0.9em;
+        color: #075c70;
+      }
+      footer {
+        margin-top: 36px;
+        padding-top: 16px;
+        border-top: 1px solid var(--line);
+        font-size: 12px;
+        color: var(--muted);
+      }
+      @media (max-width: 640px) {
+        .page {
+          padding: 26px 16px 40px;
+        }
+        .steps {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <p class="eyebrow">Agent orchestrator / flow</p>
+      <h1>Một yêu cầu, hai worker độc lập</h1>
+      <p class="intro">
+        OpenCode Desktop giữ vai trò điều phối: chia việc, gọi MCP, theo dõi kết
+        quả và duyệt diff. Mỗi CLI chỉ làm việc trong worktree của tác vụ mình.
+      </p>
+      <div
+        class="figure"
+        role="img"
+        aria-label="Sơ đồ: yêu cầu đến lập kế hoạch, dispatch MCP tách thành OpenCode CLI và Antigravity CLI, gom kết quả, kiểm tra diff và test; đạt thì báo cáo, không đạt thì điều chỉnh hoặc báo blocked."
+      >
+        <svg
+          viewBox="0 0 960 1040"
+          xmlns="http://www.w3.org/2000/svg"
+          aria-labelledby="title description"
+        >
+          <title id="title">
+            Luồng OpenCode Desktop điều phối hai CLI workers
+          </title>
+          <desc id="description">
+            Yêu cầu → kế hoạch → dispatch qua MCP → hai nhánh worktree riêng →
+            báo cáo và test → duyệt diff → báo kết quả hoặc xử lý blocked.
+          </desc>
+          <defs>
+            <marker
+              id="arrow"
+              markerWidth="8"
+              markerHeight="6"
+              refX="7"
+              refY="3"
+              orient="auto"
+            >
+              <polygon points="0 0, 8 3, 0 6" fill="#64748b" />
+            </marker>
+            <marker
+              id="arrow-accent"
+              markerWidth="8"
+              markerHeight="6"
+              refX="7"
+              refY="3"
+              orient="auto"
+            >
+              <polygon points="0 0, 8 3, 0 6" fill="#0891b2" />
+            </marker>
+            <marker
+              id="arrow-link"
+              markerWidth="8"
+              markerHeight="6"
+              refX="7"
+              refY="3"
+              orient="auto"
+            >
+              <polygon points="0 0, 8 3, 0 6" fill="#2563eb" />
+            </marker>
+          </defs>
+          <!-- Connectors sit below their endpoint nodes. -->
+          <path class="arrow" d="M480 96 V144" />
+          <path class="arrow arrow-primary" d="M480 216 V264" />
+          <path
+            class="arrow arrow-primary"
+            d="M432 344 V372 Q432 380 424 380 H260 Q252 380 252 388 V424"
+          />
+          <path
+            class="arrow arrow-primary"
+            d="M528 344 V372 Q528 380 536 380 H700 Q708 380 708 388 V424"
+          />
+          <path
+            class="arrow"
+            d="M252 508 V544 Q252 552 260 552 H408 Q416 552 416 560 V592"
+          />
+          <path
+            class="arrow"
+            d="M708 508 V544 Q708 552 700 552 H552 Q544 552 544 560 V592"
+          />
+          <path class="arrow" d="M480 672 V728" />
+          <path class="arrow arrow-primary" d="M608 792 H696" />
+          <path class="arrow" d="M480 856 V904" />
+
+          <rect
+            class="node node-soft"
+            x="360"
+            y="32"
+            width="240"
+            height="64"
+            rx="32"
+          />
+          <text class="tag" x="480" y="56">INPUT</text>
+          <text class="label" x="480" y="80">Yêu cầu của người dùng</text>
+
+          <rect
+            class="node node-strong"
+            x="360"
+            y="144"
+            width="240"
+            height="72"
+            rx="8"
+          />
+          <text class="tag" x="480" y="168">OPENCODE DESKTOP</text>
+          <text class="label" x="480" y="192">Lập kế hoạch · chia tác vụ</text>
+
+          <rect
+            class="node node-accent"
+            x="360"
+            y="264"
+            width="240"
+            height="80"
+            rx="8"
+          />
+          <text class="tag" x="480" y="288">MCP / DISPATCH_TASKS</text>
+          <text class="label" x="480" y="312">Tạo branch + worktree</text>
+          <text class="sub" x="480" y="332">run_id · giới hạn đồng thời</text>
+
+          <rect
+            class="node node-strong"
+            x="112"
+            y="424"
+            width="280"
+            height="84"
+            rx="8"
+          />
+          <text class="tag" x="252" y="448">WORKTREE A</text>
+          <text class="label" x="252" y="472">OpenCode CLI</text>
+          <text class="sub" x="252" y="492">opencode run · Muse Spark</text>
+
+          <rect
+            class="node node-strong"
+            x="568"
+            y="424"
+            width="280"
+            height="84"
+            rx="8"
+          />
+          <text class="tag" x="708" y="448">WORKTREE B</text>
+          <text class="label" x="708" y="472">Antigravity CLI</text>
+          <text class="sub" x="708" y="492">agy -p · Gemini Flash</text>
+
+          <rect
+            class="node node-soft"
+            x="344"
+            y="592"
+            width="272"
+            height="80"
+            rx="8"
+          />
+          <text class="tag" x="480" y="616">GET_STATUS / COLLECT_RESULTS</text>
+          <text class="label" x="480" y="640">Gom báo cáo + chạy test</text>
+          <text class="sub" x="480" y="660">
+            status · files · exit code · logs
+          </text>
+
+          <polygon
+            class="node node-strong"
+            points="480,728 608,792 480,856 352,792"
+          />
+          <text class="tag" x="480" y="776">REVIEW</text>
+          <text class="label" x="480" y="800">Diff + test đạt?</text>
+
+          <rect x="640" y="762" width="40" height="12" fill="#fff" />
+          <text class="edge-label" x="660" y="770">CÓ</text>
+          <rect
+            class="node node-accent"
+            x="696"
+            y="756"
+            width="208"
+            height="72"
+            rx="8"
+          />
+          <text class="tag" x="800" y="780">OUTPUT</text>
+          <text class="label" x="800" y="804">Báo cáo người dùng</text>
+
+          <text class="edge-label" x="512" y="884">CHƯA</text>
+          <rect
+            class="node node-soft"
+            x="344"
+            y="904"
+            width="272"
+            height="72"
+            rx="8"
+          />
+          <text class="tag" x="480" y="928">FOLLOW-UP</text>
+          <text class="label" x="480" y="952">Sửa lại / báo blocked</text>
+
+          <line
+            x1="40"
+            y1="1000"
+            x2="920"
+            y2="1000"
+            stroke="#cbd5e1"
+            stroke-width="1"
+          />
+          <text class="tag" x="76" y="1024">NGUYÊN TẮC</text>
+          <text class="sub" x="340" y="1024">
+            KHÔNG TỰ MERGE · COMMIT · PUSH
+          </text>
+          <text class="sub" x="728" y="1024">CLEANUP CHỈ KHI YÊU CẦU</text>
+        </svg>
+      </div>
+      <p class="note">
+        <strong>Dashboard</strong> chỉ đọc báo cáo trong Git metadata để hiển
+        thị worker, model, trạng thái và test. Nó không dispatch hoặc thay đổi
+        run.
+      </p>
+      <div class="steps">
+        <div>
+          <h2>1. Giao việc</h2>
+          <p>
+            Dùng skill <code>parallel-cli-orchestration</code> để lập tác vụ độc
+            lập, chọn worker, phạm vi file và lệnh test được phép.
+          </p>
+        </div>
+        <div>
+          <h2>2. Theo dõi</h2>
+          <p>
+            Gọi <code>get_run_status</code>, hoặc mở dashboard tại
+            <code>127.0.0.1:4317</code> cho cùng Git repository.
+          </p>
+        </div>
+        <div>
+          <h2>3. Duyệt kết quả</h2>
+          <p>
+            <code>collect_run_results</code> cho báo cáo; kiểm tra
+            <code>git diff &lt;base_commit&gt;</code> trong từng worktree trước
+            khi chấp nhận.
+          </p>
+        </div>
+        <div>
+          <h2>4. Dừng / dọn</h2>
+          <p>
+            <code>cancel_run</code> giữ worktree. <code>cleanup_run</code> chỉ
+            chạy sau yêu cầu rõ ràng; không xóa branch hay dữ liệu chưa commit.
+          </p>
+        </div>
+      </div>
+      <footer>
+        Sơ đồ luồng của agent-orchestrator · macOS / Linux · MCP stdio
+      </footer>
+    </main>
+  </body>
+</html>
